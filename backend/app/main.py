@@ -17,7 +17,11 @@ app.add_middleware(
 )
 
 # ✅ Load reference database
-with open("reference_db.json") as f:
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+with open(os.path.join(BASE_DIR, "reference_db.json")) as f:
     db = json.load(f)
 
 
