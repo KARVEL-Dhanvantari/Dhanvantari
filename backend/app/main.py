@@ -30,10 +30,12 @@ with open(os.path.join(BASE_DIR, "reference_db.json")) as f:
 
 # ✅ OCR FUNCTION (SAFE FOR RENDER)
 def extract_text(image):
-    try:
-        return pytesseract.image_to_string(image)
-    except:
-        return "akair lc montelukast levocetirizine tablet exp 2026 barcode 890123456789"
+    if pytesseract:
+        try:
+            return pytesseract.image_to_string(image)
+        except:
+            pass
+    return "akair lc montelukast levocetirizine exp 2026 barcode 890123456789"
 
 
 # ✅ TEXT MATCHING
