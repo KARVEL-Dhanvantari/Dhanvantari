@@ -1,7 +1,10 @@
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, UploadFile, File
 import shutil
-import pytesseract
+try:
+    import pytesseract
+except:
+    pytesseract = None
 from PIL import Image
 import json
 
