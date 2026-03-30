@@ -1,1 +1,26 @@
-
+{
+  "deespot": {
+    "name": "Deespot 250",
+    "keywords": ["deespot", "tranexamic", "250"],
+    "barcode_prefix": "890",
+    "expiry_required": false
+  },
+  "akair": {
+    "name": "Akair LC",
+    "keywords": ["akair", "montelukast", "levocetirizine"],
+    "barcode_prefix": "890",
+    "expiry_required": false
+  },
+  "clide": {
+    "name": "Clide",
+    "keywords": ["clide", "citicoline", "piracetam"],
+    "barcode_prefix": "890",
+    "expiry_required": true
+  },
+  "fictitious": {
+    "name": "Fictitious Medicine",
+    "keywords": ["fictitious", "bishopsgate"],
+    "barcode_prefix": "952",
+    "expiry_required": true
+  }
+}
