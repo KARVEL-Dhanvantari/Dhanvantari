@@ -203,3 +203,8 @@ function updateIcon(theme) {
   toggleIcon.textContent = theme === 'dark' ? '🌙' : '☀️';
 }
 
+function scrollToHow() {
+  document.querySelector(".how-section").scrollIntoView({
+    behavior: "smooth"
+  });
+}
