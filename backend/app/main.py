@@ -1,17 +1,12 @@
-from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+
+from fastapi import FastAPI, UploadFile, File
 import shutil
 import pytesseract
 from PIL import Image
-
-import pytesseract
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-
-from utils import extract_expiry, check_barcode, check_image_quality
+import json
 
 app = FastAPI()
-
-# Allow frontend connection
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -21,61 +16,96 @@ app.add_middleware(
 )
 
 
-@app.get("/")
-def home():
-    return {"message": "Medicine Detector Backend Running 🚀"}
+# Load reference database
+with open("reference_db.json") as f:
+    db = json.load(f)
+
+
+def analyze_text(text):
+    text = text.lower()
+
+    best_match = None
+    best_score = 0
+
+    for key, med in db.items():
+        matches = sum([1 for k in med["keywords"] if k in text])
+
+        if matches > best_score:
+            best_score = matches
+            best_match = med
+
+    return best_match, best_score
 
 
 @app.post("/analyze/")
 async def analyze(file: UploadFile = File(...)):
-    file_path = file.filename
+    file_path = f"temp_{file.filename}"
 
-    # Save uploaded image
+    # Save file
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
     # OCR
-    text = pytesseract.image_to_string(Image.open(file_path))
+    try:
+        text = pytesseract.image_to_string(Image.open(file_path))
+    except:
+        text = ""
 
-    # Checks
-    barcode, barcode_valid = check_barcode(file_path)
-    expiry = extract_expiry(text)
-    good_quality = check_image_quality(file_path)
+    medicine, match_score = analyze_text(text)
 
-    score = 0
+    # 🚨 UNKNOWN MEDICINE HANDLING
+    if match_score == 0:
+        return {
+            "medicine": "Unknown",
+            "status": "Not in Database",
+            "confidence": 50,
+            "issues": ["No matching reference found"],
+            "raw_text": text[:200]
+        }
+
     issues = []
+    score = 50
+    text_lower = text.lower()
 
-    if barcode_valid:
-        score += 1
+    # 🔤 KEYWORD MATCH
+    if match_score >= 2:
+        score += 30
+    elif match_score == 1:
+        score += 15
+        issues.append("Weak text match")
+
+    # 📅 EXPIRY CHECK (SMART)
+    has_exp = "exp" in text_lower
+
+    if medicine["expiry_required"]:
+        if has_exp:
+            score += 10
+        else:
+            issues.append("Expiry missing (expected)")
     else:
-        issues.append("Invalid or missing barcode")
+        if has_exp:
+            score += 5  # bonus, not required
 
-    if expiry:
-        score += 1
+    # 📦 BARCODE CHECK (PATTERN BASED)
+    numbers = "".join([c for c in text if c.isdigit()])
+
+    if medicine["barcode_prefix"] in numbers:
+        score += 10
     else:
-        issues.append("Expiry date not detected")
+        issues.append("Barcode pattern mismatch")
 
-    if good_quality:
-        score += 1
-    else:
-        issues.append("Low image quality")
-
-    # Final decision
-    if score == 3:
+    # 🎯 Final status
+    if score >= 75:
         status = "Likely Genuine"
-        confidence = 90
-    elif score == 2:
+    elif score >= 55:
         status = "Suspicious"
-        confidence = 60
     else:
         status = "Likely Fake"
-        confidence = 30
 
     return {
+        "medicine": medicine["name"],
         "status": status,
-        "confidence": confidence,
-        "barcode": barcode,
-        "expiry": expiry,
+        "confidence": score,
         "issues": issues,
-        "raw_text": text[:300]
+        "raw_text": text[:200]
     }
